@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 use vars qw($VERSION);
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 =head1 NAME
 
@@ -425,9 +425,8 @@ sub Add {
     $promote = 1    if(Authorised(EDITOR));
     $tvars{data}{ddpublish} = PublishAction(1,$promote);
     $tvars{data}{ddpublish} = PublishSelect(1)  if(Authorised(ADMIN));
-
-    $tvars{data}{ddvenue}     =  VenueSelect($tvars{data}{venueid},1);
-    $tvars{data}{ddsponsor}   =  $sponsors->SponsorSelect($tvars{data}{sponsorid},1);
+    $tvars{data}{ddvenue}   = VenueSelect($tvars{data}{venueid},1);
+    $tvars{data}{ddsponsor} = $sponsors->SponsorSelect($tvars{data}{sponsorid},1);
 }
 
 sub Edit {
@@ -553,7 +552,7 @@ sub Save {
 }
 
 sub Promote {
-    return  unless AccessUser(ADMIN);
+    return  unless AccessUser(PUBLISHER);
     my @ids = CGIArray('LISTED');
     return  unless @ids;
 
@@ -568,7 +567,7 @@ sub Promote {
 }
 
 sub Delete {
-    return  unless AccessUser(EDITOR);
+    return  unless AccessUser(ADMIN);
     my @ids = CGIArray('LISTED');
     return  unless @ids;
 
@@ -622,7 +621,7 @@ Miss Barbell Productions, L<http://www.missbarbell.co.uk/>
 
 =head1 COPYRIGHT & LICENSE
 
-  Copyright (C) 2002-2012 Barbie for Miss Barbell Productions
+  Copyright (C) 2002-2013 Barbie for Miss Barbell Productions
   All Rights Reserved.
 
   This module is free software; you can redistribute it and/or

@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 use vars qw($VERSION);
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 =head1 NAME
 
@@ -82,12 +82,14 @@ Delete a talk.
 
 =item EventSelect
 
+Provides a dropdown list of events available.
+
 =back
 
 =cut
 
 sub Admin {
-    return  unless AccessUser(ADMIN);
+    return  unless AccessUser(EDITOR);
 
     if($cgiparams{doaction}) {
         if($cgiparams{doaction} eq 'Delete') { Delete(); }
@@ -98,16 +100,16 @@ sub Admin {
 }
 
 sub Add {
-    return  unless AccessUser(ADMIN);
-    return  unless AuthorCheck('GetEventByID','eventid',ADMIN);
+    return  unless AccessUser(EDITOR);
+    return  unless AuthorCheck('GetEventByID','eventid',EDITOR);
 
     $tvars{data}{ddusers}  = UserSelect(0,1,0,'Speaker',1);
     $tvars{data}{ddevents} = EventSelect($cgiparams{eventid});
 }
 
 sub Edit {
-    return  unless AccessUser(ADMIN);
-    return  unless AuthorCheck('GetEventByID','eventid',ADMIN);
+    return  unless AccessUser(EDITOR);
+    return  unless AuthorCheck('GetEventByID','eventid',EDITOR);
 
     if($cgiparams{talkid}) {
         my @rows = $dbi->GetQuery('hash','GetTechTalkByID',$cgiparams{talkid});
@@ -123,8 +125,8 @@ sub Edit {
 }
 
 sub Save {
-    return  unless AccessUser(ADMIN);
-    return  unless AuthorCheck('GetEventByID','eventid',ADMIN);
+    return  unless AccessUser(EDITOR);
+    return  unless AuthorCheck('GetEventByID','eventid',EDITOR);
 
     my $opt = $cgiparams{talkid} ? $tvars{data}{userid} : 0;
     $tvars{data}{ddusers}  = UserSelect($opt,1,0,'Speaker',1);
@@ -176,7 +178,6 @@ sub EventSelect {
     DropDownRows($opt,'eventid','id','value',@list);
 }
 
-
 1;
 
 __END__
@@ -192,7 +193,7 @@ Miss Barbell Productions, L<http://www.missbarbell.co.uk/>
 
 =head1 COPYRIGHT & LICENSE
 
-  Copyright (C) 2002-2012 Barbie for Miss Barbell Productions
+  Copyright (C) 2002-2013 Barbie for Miss Barbell Productions
   All Rights Reserved.
 
   This module is free software; you can redistribute it and/or

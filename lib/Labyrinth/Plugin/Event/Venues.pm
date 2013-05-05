@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 use vars qw($VERSION);
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 =head1 NAME
 
@@ -77,6 +77,8 @@ my $LEVEL       = ADMIN;
 
 =item Current
 
+Current list of venues for events.
+
 =back
 
 =cut
@@ -119,7 +121,7 @@ Delete a venue.
 =cut
 
 sub Admin {
-    return  unless AccessUser($LEVEL);
+    return  unless AccessUser(EDITOR);
     if($cgiparams{doaction}) {
         if($cgiparams{doaction} eq 'Delete') { Delete(); }
     }
@@ -128,7 +130,7 @@ sub Admin {
 }
 
 sub Edit {
-    return  unless AccessUser($LEVEL);
+    return  unless AccessUser(EDITOR);
     if($cgiparams{$INDEXKEY}) {
         my @rows = $dbi->GetQuery('hash',$GETSQL,$cgiparams{$INDEXKEY});
         $tvars{data}->{$_} = $rows[0]->{$_}   for(keys %{$rows[0]});
@@ -146,7 +148,7 @@ sub Edit {
 }
 
 sub Save {
-    return  unless AccessUser($LEVEL);
+    return  unless AccessUser(EDITOR);
     for(keys %fields) {
            if($fields{$_}->{html} == 1) { $cgiparams{$_} = CleanHTML($cgiparams{$_}) }
         elsif($fields{$_}->{html} == 2) { $cgiparams{$_} = CleanTags($cgiparams{$_}) }
@@ -177,11 +179,11 @@ sub Save {
 }
 
 sub Delete {
-    return  unless AccessUser($LEVEL);
+    return  unless AccessUser(ADMIN);
     my @ids = CGIArray('LISTED');
     return  unless @ids;
-    my $ids = join(",",@ids);
-    $dbi->DoQuery($DELETESQL,{ids => $ids});
+
+    $dbi->DoQuery($DELETESQL,{ids => join(",",@ids)});
 }
 
 1;
@@ -199,7 +201,7 @@ Miss Barbell Productions, L<http://www.missbarbell.co.uk/>
 
 =head1 COPYRIGHT & LICENSE
 
-  Copyright (C) 2002-2012 Barbie for Miss Barbell Productions
+  Copyright (C) 2002-2013 Barbie for Miss Barbell Productions
   All Rights Reserved.
 
   This module is free software; you can redistribute it and/or
