@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 use vars qw($VERSION);
-$VERSION = '1.04';
+$VERSION = '1.05';
 
 =head1 NAME
 
@@ -24,6 +24,7 @@ use base qw(Labyrinth::Plugin::Base);
 use Clone qw(clone);
 use Time::Local;
 
+use Labyrinth::Audit;
 use Labyrinth::DBUtils;
 use Labyrinth::DTUtils;
 use Labyrinth::MLUtils;
@@ -110,7 +111,7 @@ sub NextEvent {
     }
     return  unless(@rows);
 
-    $tvars{event}{$cgiparams{eventtype}}{next} = $rows[0];
+    $tvars{event}{$cgiparams{eventtypeid}}{next} = $rows[0];
 
     my @talks = $dbi->GetQuery('hash','GetEventTalks',$rows[0]->{eventid});
     if(@talks) {
@@ -136,11 +137,12 @@ sub NextEvents {
     } else {
         @rows = $dbi->GetQuery('hash','GetNextEvents',$timer);
     }
+    LogDebug("NextEvents rows=".scalar(@rows));
     return  unless(@rows);
 
     my @dates;
     for my $row (@rows) {
-        push @dates, formatDate(10,$_->{listdate});
+        push @dates, formatDate(10,$row->{listdate});
     }
 
     $tvars{events}{$cgiparams{eventtypeid}}{future} = $rows[0];
@@ -164,17 +166,19 @@ sub PrevEvents {
     } else {
         @rows = $dbi->GetQuery('hash','GetPrevEvents',$timer);
     }
+    LogDebug("PrevEvents rows=".scalar(@rows));
 
     my %data;
     for my $row (@rows) {
-        $data{$row->{listdate}}->{eventid} = $row->{eventid};
-        $data{$row->{listdate}}->{date} = $row->{eventdate};
+        $data{$row->{listdate}}->{$_} = $row->{$_}  for(keys %$row);
+
+        next    unless($row->{talktitle});  # ignore talks without a title
         my %talk = map {$_ => $row->{$_}} qw(realname guest talktitle);
         push @{$data{$row->{listdate}}->{talks}}, \%talk;
 
     }
     my @data = map {$data{$_}} reverse sort keys %data;
-    $tvars{events} = \@data   if(@data);
+    $tvars{events}{$cgiparams{eventtypeid}}{past} = \@data   if(@data);
 
     if($cgiparams{eventtypeid}) {
         my $sections = Labyrinth::Plugin::Articles::Sections->new();
@@ -430,7 +434,9 @@ sub Add {
 }
 
 sub Edit {
+    return  unless AccessUser(EDITOR);
     return  unless AuthorCheck('GetEventByID','eventid',EDITOR);
+    return  unless($tvars{data});   # no data, no event
 
     if($tvars{data}{publish} == 4 && $tvars{command} ne 'view') {
         $tvars{errcode} = 'FAILURE';
@@ -441,7 +447,7 @@ sub Edit {
     my $sponsors   = Labyrinth::Plugin::Event::Sponsors->new();
 
     $tvars{data}{align}       = $cgiparams{ALIGN0};
-    $tvars{data}{alignment}   = Alignment($tvars{data}{align});
+    $tvars{data}{alignment}   = AlignClass($tvars{data}{align});
     $tvars{data}{ddalign}     = AlignSelect($tvars{data}{align});
     $tvars{data}{name}        = UserName($tvars{data}{userid});
     $tvars{data}{ddtype}      = $eventtypes->EventTypeSelect($tvars{data}{eventtypeid},1);
@@ -472,6 +478,7 @@ sub Edit {
 }
 
 sub Copy {
+    return  unless AccessUser(EDITOR);
     $cgiparams{'eventid'} = $cgiparams{'LISTED'};
     return  unless AuthorCheck('GetEventByID','eventid',EDITOR);
 
@@ -481,14 +488,13 @@ sub Copy {
                     $tvars{data}{eventtime},
                     $tvars{data}{eventtypeid},
                     $tvars{data}{venueid},
-                    $tvars{data}{body},
-                    $tvars{data}{links},
                     $tvars{data}{imageid},
                     $tvars{data}{align},
                     1,
-                    $tvars{data}{sponsorid},
+                    $tvars{data}{sponsorid} || 0,
                     $tvars{data}{listdate},
-                    formatDate(0),
+                    $tvars{data}{body},
+                    $tvars{data}{links},
                     $tvars{loginid});
 
     $cgiparams{eventid} = $dbi->IDQuery('AddEvent',@fields);
@@ -498,6 +504,7 @@ sub Copy {
 }
 
 sub Save {
+    return  unless AccessUser(EDITOR);
     return  unless AuthorCheck('GetEventByID','eventid',EDITOR);
 
     $tvars{data}{align} = $cgiparams{ALIGN0};
@@ -538,7 +545,7 @@ sub Save {
                     $imageid,
                     $tvars{data}{align},
                     $tvars{data}{publish},
-                    $tvars{data}{sponsorid},
+                    $tvars{data}{sponsorid} || 0,
                     $tvars{data}{listdate},
                     $tvars{data}{body},
                     $tvars{data}{links}
